@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NST LOGIN - ULTIMATE GLOW</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            height: 100vh; display: flex; justify-content: center; align-items: center;
+            background: #000; font-family: 'Share Tech Mono', monospace; overflow: hidden;
+            position: relative;
+        }
+
+        .starfield {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: -1; animation: moveStars 100s linear infinite;
+        }
+        @keyframes moveStars {
+            from { background-position: 0 0; }
+            to { background-position: -10000px 5000px; }
+        }
+
+        .login-card {
+            position: relative; width: 380px; padding: 50px; background: rgba(0, 0, 0, 0.9);
+            border-radius: 20px; text-align: center; border: 2px solid #00ff88;
+            box-shadow: 0 0 40px rgba(0, 255, 136, 0.5);
+            animation: borderGlow 4s infinite alternate ease-in-out;
+        }
+        @keyframes borderGlow {
+            0% { border-color: #00ff88; box-shadow: 0 0 20px #00ff88; }
+            100% { border-color: #00ffee; box-shadow: 0 0 40px #00ffee; }
+        }
+
+        h2 {
+            color: #00ff88; text-transform: uppercase; margin-bottom: 30px; font-size: 38px;
+            font-family: 'Orbitron', sans-serif; text-shadow: 0 0 15px #00ff88;
+        }
+        
+        .input-group { position: relative; margin-bottom: 25px; }
+        .input-group input {
+            width: 100%; padding: 18px 15px; background: rgba(30,30,30,0.8);
+            border: 1px solid #00ff88; border-radius: 10px; color: #fff;
+            font-size: 18px; outline: none; transition: 0.4s;
+        }
+        .input-group input:focus {
+            border-color: #00ffee; box-shadow: 0 0 20px #00ffee;
+        }
+
+        button {
+            width: 100%; padding: 18px; background: linear-gradient(45deg, #00ff88, #00ffee);
+            border: none; border-radius: 30px; color: #000; font-weight: bold; cursor: pointer;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.7); font-family: 'Orbitron', sans-serif;
+            transition: 0.4s; text-transform: uppercase; letter-spacing: 2px;
+        }
+        button:hover { transform: scale(1.05); background: linear-gradient(45deg, #00ffee, #00ff88); }
+
+        .link { color: #aaa; text-decoration: none; font-size: 15px; display: block; margin-top: 25px; }
+        .link a { color: #00ff88; text-decoration: none; font-weight: bold; border-bottom: 1px solid transparent; transition: 0.3s; }
+        .link a:hover { color: #00ffee; border-bottom: 1px solid #00ffee; text-shadow: 0 0 10px #00ffee; }
+    </style>
+</head>
+<body>
+    <div class="starfield"></div>
+    <div class="login-card">
+        <h2>LOGIN</h2>
+        <div class="input-group">
+            <input type="email" id="email" placeholder="Email Address" required>
+        </div>
+        <div class="input-group">
+            <input type="password" id="pass" placeholder="Password" required>
+        </div>
+        <button id="loginBtn">ACCESS CLUB</button>
+        <div class="link">
+            New here? <a href="signup.html">Create New Account</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+        import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyD-U5wOhyMDsiFf7NB4-twMFNnoWCXVXpE",
+            authDomain: "login-52331.firebaseapp.com",
+            projectId: "login-52331",
+            storageBucket: "login-52331.firebasestorage.app",
+            messagingSenderId: "199346485569",
+            appId: "1:199346485569:web:69014a90e2031e147609c0",
+            databaseURL: "https://login-52331-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        document.getElementById('loginBtn').onclick = async () => {
+            const email = document.getElementById('email').value.trim();
+            const pass = document.getElementById('pass').value.trim();
+            const btn = document.getElementById('loginBtn');
+
+            if (!email || !pass) {
+                alert("Please enter both email and password.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "VERIFYING...";
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+                const user = userCredential.user;
+                const userRef = ref(db, 'users/' + user.uid);
+
+                // ডাটাবেস চেক
+                const snapshot = await get(userRef);
+                
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    // যদি নতুন ইউজার হয় এবং ব্যালেন্স না থাকে
+                    if (data.firstLoginBonus !== true) {
+                        await update(userRef, {
+                            balance: (data.balance || 0) + 100,
+                            firstLoginBonus: true
+                        });
+                    }
+                } else {
+                    // যদি ইউজারের কোনো ডাটা না থাকে (প্রথমবার লগইন)
+                    await set(userRef, {
+                        email: user.email,
+                        balance: 100,
+                        firstLoginBonus: true
+                    });
+                }
+
+                // সফল হলে ইনডেক্স পেজে পাঠাবে
+                window.location.href = "index.html";
+
+            } catch (error) {
+                console.error(error);
+                alert("Login Failed: Wrong Email or Password!");
+                btn.disabled = false;
+                btn.innerText = "ACCESS CLUB";
+            }
+        };
+    </script>
+</body>
+</html>

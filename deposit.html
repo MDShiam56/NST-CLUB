@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deposit - N S T CLUB PRO</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap');
+        body { font-family: 'Poppins', sans-serif; background: #0b1a13; margin: 0; padding: 15px; color: white; }
+        .card { background: #1a2e24; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-width: 400px; margin: auto; border: 1px solid #1dcc70; }
+        h2 { color: #1dcc70; text-align: center; margin-bottom: 20px; }
+        .pay-method { display: flex; gap: 10px; margin-bottom: 20px; }
+        .method { flex: 1; border: 2px solid #333; padding: 12px; text-align: center; border-radius: 12px; cursor: pointer; transition: 0.3s; font-weight: bold; background: #0b1a13; }
+        .method img { width: 40px; height: 40px; object-fit: contain; display: block; margin: 0 auto 5px; border-radius: 5px; }
+        .method.active { border-color: #1dcc70; background: rgba(29, 204, 112, 0.1); }
+        
+        .admin-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; border: 1px dashed #1dcc70; }
+        .admin-box p { margin: 5px 0; color: #ccc; font-size: 14px; }
+        .admin-box h3 { margin: 5px 0; color: #1dcc70; font-size: 22px; letter-spacing: 1px; }
+        
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #aaa; font-size: 14px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #333; background: #0b1a13; color: white; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        
+        .btn-submit { width: 100%; background: #1dcc70; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3); transition: 0.3s; }
+        .btn-submit:active { transform: scale(0.98); }
+        .back-btn { display: inline-block; margin-bottom: 15px; color: #1dcc70; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <a href="index.html" class="back-btn">← Back to Game</a>
+
+    <div class="card">
+        <h2>Deposit Fund</h2>
+        
+        <p style="text-align: center; font-weight: bold; color: #ccc; font-size: 13px;">Select Payment Method</p>
+        <div class="pay-method">
+            <div id="btn-bkash" class="method active" onclick="selectMethod('Bkash', '01949243011')">
+                <img src="https://logowik.com/content/uploads/images/bkash-logo-vector.jpg" alt="Bkash">
+                Bkash
+            </div>
+            <div id="btn-nagad" class="method" onclick="selectMethod('Nagad', '01336487132')">
+                <img src="https://logowik.com/content/uploads/images/nagad-logo-vector.jpg" alt="Nagad">
+                Nagad
+            </div>
+        </div>
+
+        <div class="admin-box">
+            <p id="method-label">Send Money to (Bkash Personal):</p>
+            <h3 id="admin-num">01949243011</h3>
+            <small style="color: #ff5252;">*নম্বরটি কপি করে টাকা পাঠিয়ে দিন।</small>
+        </div>
+
+        <label>Deposit Amount (Min 100৳)</label>
+        <input type="number" id="dep-amount" placeholder="Min 100৳">
+
+        <label>Transaction ID (TrxID)</label>
+        <input type="text" id="trx-id" placeholder="Enter TrxID">
+
+        <button id="submit-btn" class="btn-submit">Submit Request</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+        import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD-U5wOhyMDsiFf7NB4-twMFNnoWCXVXpE",
+            authDomain: "login-52331.firebaseapp.com",
+            projectId: "login-52331",
+            storageBucket: "login-52331.firebasestorage.app",
+            messagingSenderId: "199346485569",
+            appId: "1:199346485569:web:69014a90e2031e147609c0",
+            databaseURL: "https://login-52331-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        let currentMethod = "Bkash";
+        let currentUser = null;
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+            } else {
+                window.location.href = "login.html";
+            }
+        });
+
+        window.selectMethod = (method, number) => {
+            currentMethod = method;
+            document.getElementById('admin-num').innerText = number;
+            document.getElementById('method-label').innerText = "Send Money to (" + method + " Personal):";
+            
+            document.getElementById('btn-bkash').classList.remove('active');
+            document.getElementById('btn-nagad').classList.remove('active');
+            
+            if(method === 'Bkash') document.getElementById('btn-bkash').classList.add('active');
+            else document.getElementById('btn-nagad').classList.add('active');
+        };
+
+        async function submitDeposit() {
+            const amount = parseFloat(document.getElementById('dep-amount').value);
+            const trx = document.getElementById('trx-id').value.trim();
+            const btn = document.getElementById('submit-btn');
+
+            if (!currentUser) return;
+
+            if (isNaN(amount) || amount < 100) {
+                alert("সর্বনিম্ন ১০০ টাকা ডিপোজিট করতে পারবেন।");
+                return;
+            }
+
+            if (trx.length < 6) {
+                alert("দয়া করে সঠিক Transaction ID দিন।");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+
+            try {
+                const depositRef = ref(db, 'depositRequests');
+                const newReqRef = push(depositRef);
+                
+                await set(newReqRef, {
+                    uid: currentUser.uid,
+                    email: currentUser.email,
+                    method: currentMethod,
+                    amount: amount,
+                    trxID: trx,
+                    status: 'Pending',
+                    timestamp: new Date().toISOString()
+                });
+
+                alert("ডিপোজিট রিকোয়েস্ট পাঠানো হয়েছে। অ্যাডমিন চেক করে ৫-৩০ মিনিটের মধ্যে ব্যালেন্স অ্যাড করে দিবে।");
+                window.location.href = "index.html";
+            } catch (error) {
+                console.error(error);
+                alert("Error sending request. Please try again.");
+                btn.disabled = false;
+                btn.innerText = "Submit Request";
+            }
+        }
+
+        document.getElementById('submit-btn').onclick = submitDeposit;
+    </script>
+</body>
+</html>

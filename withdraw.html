@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Withdraw - N S T CLUB PRO</title>
+    <style>
+        body { font-family: 'Poppins', sans-serif; background: #0b1a13; margin: 0; padding: 15px; color: white; }
+        .card { background: #1a2e24; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-width: 400px; margin: auto; border: 1px solid #1dcc70; }
+        h2 { color: #1dcc70; text-align: center; font-family: 'Orbitron', sans-serif; }
+        .balance-view { background: rgba(29, 204, 112, 0.1); padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px; border: 1px solid #1dcc70; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #aaa; font-size: 14px; }
+        select, input { width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #333; background: #0b1a13; color: white; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .btn-withdraw { width: 100%; background: #1dcc70; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        .btn-withdraw:active { transform: scale(0.98); opacity: 0.8; }
+        .back-btn { display: inline-block; margin-bottom: 15px; color: #1dcc70; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <a href="index.html" class="back-btn">← Back to Game</a>
+
+    <div class="card">
+        <h2>Withdraw Money</h2>
+        
+        <div class="balance-view">
+            <p style="margin:0; color:#ccc;">Available Balance</p>
+            <h3 style="margin:5px 0; color:#1dcc70;">৳ <span id="current-bal">0.00</span></h3>
+        </div>
+
+        <label>Select Payment Method</label>
+        <select id="wit-method">
+            <option value="Bkash">Bkash (Personal)</option>
+            <option value="Nagad">Nagad (Personal)</option>
+            <option value="Rocket">Rocket (Personal)</option>
+        </select>
+
+        <label>Account Number</label>
+        <input type="number" id="wit-num" placeholder="01XXXXXXXXX">
+
+        <label>Withdraw Amount (Min 500৳)</label>
+        <input type="number" id="wit-amount" placeholder="Enter amount">
+
+        <button id="submit-btn" class="btn-withdraw">Submit Withdrawal</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+        import { getDatabase, ref, onValue, update, push, set } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD-U5wOhyMDsiFf7NB4-twMFNnoWCXVXpE",
+            authDomain: "login-52331.firebaseapp.com",
+            projectId: "login-52331",
+            storageBucket: "login-52331.firebasestorage.app",
+            messagingSenderId: "199346485569",
+            appId: "1:199346485569:web:69014a90e2031e147609c0",
+            databaseURL: "https://login-52331-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        let userBalance = 0;
+        let userData = null;
+
+        // চেক করা ইউজার লগইন আছে কি না এবং ব্যালেন্স লোড করা
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                onValue(ref(db, 'users/' + user.uid), (snap) => {
+                    userData = snap.val();
+                    if (userData) {
+                        userBalance = parseFloat(userData.balance) || 0;
+                        document.getElementById('current-bal').innerText = userBalance.toFixed(2);
+                    }
+                });
+            } else {
+                window.location.href = "login.html";
+            }
+        });
+
+        async function submitWithdraw() {
+            const method = document.getElementById('wit-method').value;
+            const number = document.getElementById('wit-num').value;
+            const amount = parseFloat(document.getElementById('wit-amount').value);
+            const user = auth.currentUser;
+
+            if (!user) return;
+
+            // ভ্যালিডেশন
+            if (number.length < 11) {
+                alert("দয়া করে সঠিক ১১ ডিজিটের নম্বর দিন।");
+                return;
+            }
+
+            if (isNaN(amount) || amount < 500) {
+                alert("সর্বনিম্ন ৫০০ টাকা উইথড্র করতে পারবেন।");
+                return;
+            }
+
+            if (amount > userBalance) {
+                alert("আপনার ব্যালেন্স পর্যাপ্ত নয়!");
+                return;
+            }
+
+            // বাটন ডিজেবল করা (যাতে ডাবল ক্লিক না হয়)
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+
+            try {
+                // ১. ব্যালেন্স আপডেট করা
+                const newBalance = userBalance - amount;
+                await update(ref(db, 'users/' + user.uid), {
+                    balance: newBalance
+                });
+
+                // ২. উইথড্র রিকোয়েস্ট ডাটাবেসে সেভ করা (Admin দেখার জন্য)
+                const withdrawRef = ref(db, 'withdrawRequests');
+                const newReqRef = push(withdrawRef);
+                await set(newReqRef, {
+                    uid: user.uid,
+                    email: user.email,
+                    phone: userData.phone || 'N/A',
+                    method: method,
+                    accountNumber: number,
+                    amount: amount,
+                    status: 'Pending',
+                    timestamp: new Date().toISOString()
+                });
+
+                alert("উইথড্র রিকোয়েস্ট সফলভাবে জমা হয়েছে। ২৪ ঘণ্টার মধ্যে পেমেন্ট করা হবে।");
+                window.location.href = "index.html";
+
+            } catch (error) {
+                console.error(error);
+                alert("দুঃখিত, কোনো সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+                btn.disabled = false;
+                btn.innerText = "Submit Withdrawal";
+            }
+        }
+
+        document.getElementById('submit-btn').onclick = submitWithdraw;
+
+    </script>
+</body>
+</html>

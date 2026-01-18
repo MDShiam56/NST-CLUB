@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N S T CLUB - Pro Gaming</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="config.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@600&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #000; 
+            color: #fff; 
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+        }
+
+        /* হেডার এনিমেশন */
+        .header {
+            padding: 20px; text-align: center;
+            background: rgba(0, 0, 0, 0.9);
+            border-bottom: 3px solid #00ff88;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+            animation: border-flicker 2s infinite linear;
+        }
+        @keyframes border-flicker {
+            0%, 100% { border-color: #00ff88; box-shadow: 0 0 20px #00ff88; }
+            50% { border-color: #ff00ff; box-shadow: 0 0 20px #ff00ff; }
+        }
+        .header h1 { font-family: 'Orbitron', sans-serif; font-size: 26px; letter-spacing: 4px; color: #fff; text-shadow: 0 0 10px #00ff88; }
+
+        .main-content { 
+            height: calc(100vh - 150px); 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px;
+        }
+
+        /* বিশাল এনিমেটেড WINGO গোল */
+        .wingo-outer {
+            position: relative;
+            width: 210px; height: 210px;
+            display: flex; justify-content: center; align-items: center;
+            margin-bottom: 40px;
+        }
+        .wingo-circle {
+            width: 170px; height: 170px;
+            background: #000; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            border: 5px solid #00ff88;
+            box-shadow: 0 0 50px rgba(0, 255, 136, 0.8);
+            z-index: 5; cursor: pointer;
+            animation: pulse-main 1.5s infinite;
+        }
+        .wingo-circle h2 { font-family: 'Orbitron', sans-serif; font-size: 32px; color: #fff; text-shadow: 0 0 20px #00ff88; }
+
+        /* ঘুরন্ত রেইনবো রিং */
+        .rainbow-ring {
+            position: absolute;
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            border: 4px dashed transparent;
+            border-top-color: #ff0000;
+            border-right-color: #00ff00;
+            border-bottom-color: #0000ff;
+            border-left-color: #ffff00;
+            animation: spin-ring 2s linear infinite;
+        }
+
+        @keyframes spin-ring { 100% { transform: rotate(360deg); } }
+        @keyframes pulse-main { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        /* গেম বাটন গ্রিড - সুপার লাক্সারি কালার */
+        .game-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 20px; width: 100%; max-width: 480px;
+        }
+
+        .game-card {
+            position: relative;
+            padding: 40px 10px;
+            border-radius: 25px;
+            text-align: center;
+            font-size: 22px; font-weight: 900;
+            font-family: 'Orbitron', sans-serif;
+            color: #fff;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.3);
+            overflow: hidden;
+            transition: 0.4s;
+            animation: card-float 3s ease-in-out infinite;
+        }
+
+        /* বাটন কালার এনিমেশন */
+        .g-30s { background: linear-gradient(45deg, #ff0055, #ff00ff); box-shadow: 0 0 25px #ff0055; animation-delay: 0s; }
+        .g-1m { background: linear-gradient(45deg, #00ff88, #0099ff); box-shadow: 0 0 25px #00ff88; animation-delay: 0.5s; }
+        .g-3m { background: linear-gradient(45deg, #00ccff, #6600ff); box-shadow: 0 0 25px #00ccff; animation-delay: 1s; }
+        .g-5m { background: linear-gradient(45deg, #ffcc00, #ff6600); box-shadow: 0 0 25px #ffcc00; animation-delay: 1.5s; }
+
+        @keyframes card-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* বাটনের ভেতর দিয়ে আলোর ঝিলিক */
+        .game-card::after {
+            content: ''; position: absolute; top: -50%; left: -150%; width: 100%; height: 200%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transform: rotate(30deg);
+            animation: sweep 2.5s infinite;
+        }
+        @keyframes sweep { 100% { left: 150%; } }
+
+        /* বটম নেভিগেশন */
+        .bottom-nav {
+            position: fixed; bottom: 0; width: 100%; height: 80px;
+            background: #000; display: flex;
+            border-top: 3px solid #00ff88;
+            box-shadow: 0 -5px 20px rgba(0, 255, 136, 0.4);
+        }
+        .nav-btn {
+            flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            color: #555; font-size: 14px; font-weight: bold; cursor: pointer;
+        }
+        .nav-btn.active-nav { color: #00ff88; text-shadow: 0 0 10px #00ff88; }
+        .nav-btn span { font-size: 30px; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>N S T CLUB</h1>
+    </div>
+
+    <div class="main-content">
+        <div class="wingo-outer">
+            <div class="rainbow-ring"></div>
+            <div class="wingo-circle" onclick="location.href='index.html'">
+                <h2>WINGO</h2>
+            </div>
+        </div>
+
+       <div class="game-grid">
+    <div class="game-card g-30s" onclick="location.href='30s.html'">30s</div>
+    
+    <div class="game-card g-1m" onclick="location.href='1m.html'">1M</div>
+    
+    <div class="game-card g-3m" onclick="location.href='3m.html'">3M</div>
+    <div class="game-card g-5m" onclick="location.href='5m.html'">5M</div>
+</div>
+    </div>
+
+    <div class="bottom-nav">
+    <div class="nav-btn active-nav" onclick="location.href='index.html'">
+        <span>🏠</span>HOME
+    </div>
+    <div class="nav-btn" onclick="location.href='refer.html'">
+        <span>🤝</span>REFER
+    </div>
+    <div class="nav-btn" onclick="location.href='account.html'">
+        <span>👤</span>ACCOUNT
+    </div>
+</div>
+
+</body>
+</html>
