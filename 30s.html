@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>N S T Club Pro - 30s Exclusive</title>
+    <title>N S T Club Pro - 30s Exclusive Control</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Poppins:wght@300;500;700&display=swap');
 
@@ -132,7 +132,7 @@
 
     <div id="bet-modal" class="modal">
         <h3 id="modal-title">Bet</h3>
-        <input type="number" id="bet-amt" value="10" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; border-radius:10px;">
+        <input type="number" id="bet-amt" value="10" min="10" style="width:100%; padding:12px; background:#222; color:#fff; border:1px solid #444; border-radius:10px;">
         <div style="display:flex; gap:10px; margin-top:20px;">
             <button onclick="closeBet()" style="flex:1; padding:12px; background:#333; color:#fff; border:none; border-radius:10px;">Cancel</button>
             <button id="confirmBtn" style="flex:1; padding:12px; background:#1dcc70; color:#fff; font-weight:bold; border:none; border-radius:10px;">Confirm</button>
@@ -142,9 +142,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
-        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+        import { getDatabase, ref, onValue, update, set, push, get } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
 
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyD-U5wOhyMDsiFf7NB4-twMFNnoWCXVXpE",
             authDomain: "login-52331.firebaseapp.com",
@@ -161,43 +160,28 @@
 
         let balance = 0;
         let myBets30 = JSON.parse(localStorage.getItem('club_bets_30s')) || [];
-        let gameHist30 = JSON.parse(localStorage.getItem('club_hist_30s')) || [];
+        let gameHist30 = []; 
         let currentP = '', selectedC = '';
         let hP = 1, cP = 1;
 
-        // --- Firebase Balance Connection ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                const userRef = ref(db, 'users/' + user.uid);
-                onValue(userRef, (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        balance = parseFloat(data.balance) || 0;
+                onValue(ref(db, 'users/' + user.uid), (snap) => {
+                    if (snap.exists()) {
+                        balance = parseFloat(snap.val().balance) || 0;
                         document.getElementById('user-balance').innerText = balance.toFixed(2);
+                    }
+                });
+                onValue(ref(db, `wingo/30s/history`), (snap) => {
+                    if(snap.exists()){
+                        gameHist30 = Object.values(snap.val()).reverse();
+                        updateUI();
                     }
                 });
             } else {
                 window.location.href = "login.html";
             }
         });
-
-        function updateFirebaseBalance(newBal) {
-            const user = auth.currentUser;
-            if (user) {
-                update(ref(db, 'users/' + user.uid), { balance: newBal });
-            }
-        }
-
-        // --- Logic Functions ---
-        function getResult(p) {
-            let s = parseInt(p.toString().slice(-4));
-            let n = (s * 7 + 3) % 10; 
-            return {
-                num: n,
-                sz: n >= 5 ? "Big" : "Small",
-                cl: (n===0 || n===5) ? "Violet" : (n%2===0 ? "Red" : "Green")
-            };
-        }
 
         function runTimer() {
             setInterval(() => {
@@ -210,53 +194,55 @@
                 let pid = now.getFullYear().toString() + (now.getMonth()+1).toString().padStart(2,'0') + now.getDate().toString().padStart(2,'0') + "30" + total30s.toString().padStart(4, '0');
                 
                 if (currentP !== pid) {
-                    if (currentP !== "") {
-                        let res = getResult(currentP);
-                        gameHist30.unshift({period: currentP, ...res});
-                        if(gameHist30.length > 100) gameHist30.pop();
-                        checkWinner(currentP, res);
-                    }
                     currentP = pid;
                     document.getElementById('period-id').innerText = currentP;
-                    updateUI();
-                    localStorage.setItem('club_hist_30s', JSON.stringify(gameHist30));
+                    setTimeout(() => checkWinner(pid), 2000);
                 }
             }, 1000);
         }
 
-        function checkWinner(p, res) {
-            let wonAmountTotal = 0;
-            let betChanged = false;
+        async function checkWinner(p) {
+            const prevP = (parseInt(p) - 1).toString();
+            const resSnap = await get(ref(db, `wingo/30s/history/${prevP}`));
+            
+            if (resSnap.exists()) {
+                const res = resSnap.val();
+                let wonAmountTotal = 0;
+                let betChanged = false;
 
-            myBets30.forEach(bet => {
-                if (String(bet.period) === String(p) && bet.status === 'Pending') {
-                    let win = false, m = 1.96;
-                    if(bet.choice === 'Big' && res.num >= 5) win = true;
-                    else if(bet.choice === 'Small' && res.num <= 4) win = true;
-                    else if(bet.choice === 'Green' && (res.num%2!==0 || res.num===5)) win = true;
-                    else if(bet.choice === 'Red' && (res.num%2===0 || res.num===0)) win = true;
-                    else if(bet.choice === 'Violet' && (res.num===0 || res.num===5)) { win = true; m = 4.5; }
-                    else if(String(bet.choice) === String(res.num)) { win = true; m = 9; }
+                myBets30.forEach(bet => {
+                    if (String(bet.period) === String(prevP) && bet.status === 'Pending') {
+                        let win = false, m = 1.96;
+                        const n = res.number;
+                        const c = res.color;
 
-                    if(win) {
-                        let wAmt = bet.amount * m;
-                        wonAmountTotal += wAmt;
-                        bet.status = "Win";
-                        showResult(true, wAmt);
-                    } else {
-                        bet.status = "Loss";
-                        showResult(false, bet.amount);
+                        if(bet.choice === 'Big' && n >= 5) win = true;
+                        else if(bet.choice === 'Small' && n <= 4) win = true;
+                        else if(bet.choice === 'Green' && (c === 'Green' || c === 'Violet')) win = true;
+                        else if(bet.choice === 'Red' && (c === 'Red' || c === 'Violet')) win = true;
+                        else if(bet.choice === 'Violet' && c === 'Violet') { win = true; m = 4.41; }
+                        else if(String(bet.choice) === String(n)) { win = true; m = 8.82; }
+
+                        if(win) {
+                            let wAmt = bet.amount * m;
+                            wonAmountTotal += wAmt;
+                            bet.status = "Win";
+                            showResult(true, wAmt);
+                        } else {
+                            bet.status = "Loss";
+                            showResult(false, bet.amount);
+                        }
+                        betChanged = true;
                     }
-                    betChanged = true;
-                }
-            });
+                });
 
-            if(wonAmountTotal > 0) {
-                updateFirebaseBalance(balance + wonAmountTotal);
-            }
-            if(betChanged) {
-                localStorage.setItem('club_bets_30s', JSON.stringify(myBets30));
-                updateUI();
+                if(wonAmountTotal > 0) {
+                    update(ref(db, `users/${auth.currentUser.uid}`), { balance: balance + wonAmountTotal });
+                }
+                if(betChanged) {
+                    localStorage.setItem('club_bets_30s', JSON.stringify(myBets30));
+                    updateUI();
+                }
             }
         }
 
@@ -277,17 +263,17 @@
 
             let hHtml = "";
             gameHist30.slice((hP-1)*10, hP*10).forEach(i => {
-                let c = i.cl==='Red'?'#ff5252':(i.cl==='Green'?'#1dcc70':'#b983ff');
-                hHtml += `<tr><td>${i.period.slice(-4)}</td><td style="color:${c}; font-weight:bold">${i.num}</td><td>${i.sz}</td><td><div style="width:10px;height:10px;border-radius:50%;background:${c};margin:auto"></div></td></tr>`;
+                let colorCode = i.color==='Red'?'#ff5252':(i.color==='Green'?'#1dcc70':'#b983ff');
+                hHtml += `<tr><td>${i.period.slice(-4)}</td><td style="color:${colorCode}; font-weight:bold">${i.number}</td><td>${i.bigSmall}</td><td><div style="width:10px;height:10px;border-radius:50%;background:${colorCode};margin:auto"></div></td></tr>`;
             });
-            document.getElementById('history-list').innerHTML = hHtml || '<tr><td colspan="4">No Data</td></tr>';
+            document.getElementById('history-list').innerHTML = hHtml || '<tr><td colspan="4">Loading...</td></tr>';
 
             let cHtml = "";
             gameHist30.slice((cP-1)*10, cP*10).forEach(item => {
                 let dots = "";
                 for(let i=0; i<=9; i++) {
-                    let dotBg = i === item.num ? (item.cl==='Red'?'#ff5252':(item.cl==='Green'?'#1dcc70':'#b983ff')) : 'transparent';
-                    dots += `<span style="width:18px;height:18px;display:inline-block;border-radius:50%;border:1px solid #333;margin:0 2px;background:${dotBg};font-size:10px;color:${i===item.num?'#fff':'#444'};line-height:18px;">${i}</span>`;
+                    let dotBg = i === item.number ? (item.color==='Red'?'#ff5252':(item.color==='Green'?'#1dcc70':'#b983ff')) : 'transparent';
+                    dots += `<span style="width:18px;height:18px;display:inline-block;border-radius:50%;border:1px solid #333;margin:0 2px;background:${dotBg};font-size:10px;color:${i===item.number?'#fff':'#444'};line-height:18px;">${i}</span>`;
                 }
                 cHtml += `<tr><td>${item.period.slice(-4)}</td><td>${dots}</td></tr>`;
             });
@@ -304,36 +290,40 @@
             document.getElementById('my-bet-list').innerHTML = myHtml || '<p style="text-align:center;padding:20px;color:#444">No Bets Found</p>';
         }
 
-        // --- Exposed Global Functions ---
         window.openBet = (v) => { 
             selectedC = v; 
             document.getElementById('modal-title').innerText = "Bet 30s: " + v; 
             document.getElementById('bet-modal').style.display = 'block'; 
         };
         window.closeBet = () => { document.getElementById('bet-modal').style.display = 'none'; };
+        
         window.switchTab = (e, id) => {
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
             document.getElementById(id).classList.add('active'); e.currentTarget.classList.add('active');
         };
+
         window.movePage = (t, d) => {
             if(t==='h') hP = Math.max(1, Math.min(10, hP + d));
             else cP = Math.max(1, Math.min(10, cP + d));
             updateUI();
         };
 
-        document.getElementById('confirmBtn').onclick = () => {
-            let a = parseFloat(document.getElementById('bet-amt').value);
-            if(isNaN(a) || a <= 0) return alert("Enter valid amount");
-            if(balance < a) return alert("Insufficient Balance");
+        document.getElementById('confirmBtn').onclick = async () => {
+            let amt = parseFloat(document.getElementById('bet-amt').value);
+            if(isNaN(amt) || amt < 10) return alert("Minimum Bet ৳10");
+            if(balance < amt) return alert("Insufficient Balance");
             
-            // ডাটাবেস আপডেট
-            updateFirebaseBalance(balance - a);
+            const user = auth.currentUser;
+            await update(ref(db, `users/${user.uid}`), { balance: balance - amt });
             
-            myBets30.push({period: currentP, choice: selectedC, amount: a, status: 'Pending'});
+            push(ref(db, `wingoBets/30s/${currentP}`), {
+                uid: user.uid, amount: amt, value: selectedC, period: currentP, time: Date.now()
+            });
+
+            myBets30.push({period: currentP, choice: selectedC, amount: amt, status: 'Pending'});
             localStorage.setItem('club_bets_30s', JSON.stringify(myBets30));
-            closeBet(); 
-            updateUI();
+            closeBet(); updateUI();
         };
 
         window.onload = () => {
@@ -346,7 +336,6 @@
                 b.onclick = () => openBet(i); grid.appendChild(b);
             }
             runTimer();
-            updateUI();
         };
     </script>
 </body>
