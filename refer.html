@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Refer & Earn - NST CLUB</title>
+
+    <script src="https://pl28544750.effectivegatecpm.com/b8/0a/e0/b80ae00f014f59f727a4b94dc3a193eb.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&family=Rajdhani:wght@500;700&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,16 +24,24 @@
         .btn:hover { transform: scale(1.03); box-shadow: 0 0 20px #8a2be2; }
         
         .home { position: absolute; top: 20px; left: 20px; color: #00ff88; text-decoration: none; font-size: 12px; font-family: 'Orbitron'; }
+        
+        /* অ্যাড এর জন্য বাড়তি জায়গা */
+        .ad-space { margin-bottom: 15px; font-size: 10px; color: #444; }
     </style>
 </head>
 <body>
     <a href="index.html" class="home">← HOME</a>
+    
     <div class="card">
+        <div class="ad-space">ADVERTISEMENT</div>
+        
         <h2 style="font-family:'Orbitron'; color:#8a2be2; margin-bottom:20px;">PARTNER</h2>
+        
         <div class="income-badge">
             <p style="font-size:12px; color:#aaa; margin-bottom:5px;">TOTAL EARNED</p>
             <h1 id="totalIncome">৳ 0.00</h1>
         </div>
+        
         <p style="font-size:15px; margin-bottom:20px;">Invite friends & get <b>৳২০</b> instantly!</p>
         <div class="link-box" id="myLink">Loading link...</div>
         <button class="btn" onclick="copy()">COPY & SHARE</button>
@@ -57,7 +68,6 @@
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // প্লেইন টেক্সট লিঙ্কের পরিবর্তে অটোমেটিক ফুল লিঙ্ক জেনারেশন
                 let currentUrl = window.location.href;
                 let baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/'));
                 const fullLink = baseUrl + "/signup.html?ref=" + user.uid;
@@ -82,7 +92,6 @@
             navigator.clipboard.writeText(linkText).then(() => {
                 alert("Link Copied Successfully!\n\n" + linkText);
             }).catch(err => {
-                // ব্রাউজার সাপোর্ট না করলে অল্টারনেটিভ কপি মেথড
                 const el = document.createElement('textarea');
                 el.value = linkText;
                 document.body.appendChild(el);
