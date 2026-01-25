@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deposit - N S T CLUB PRO</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&family=Orbitron:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap');
         
         body { 
             font-family: 'Poppins', sans-serif; 
@@ -29,10 +29,10 @@
             max-width: 400px; width: 100%;
             border: 1px solid rgba(29, 204, 112, 0.3);
             animation: fadeIn 0.8s ease-out;
-            margin-top: 20px;
+            margin-top: 10px;
         }
 
-        h2 { color: #1dcc70; text-align: center; margin-bottom: 20px; text-shadow: 0 0 10px rgba(29, 204, 112, 0.5); font-family: 'Orbitron'; }
+        h2 { color: #1dcc70; text-align: center; margin-bottom: 20px; text-shadow: 0 0 10px rgba(29, 204, 112, 0.5); }
         
         .pay-method { display: flex; gap: 12px; margin-bottom: 20px; }
         .method { 
@@ -40,7 +40,7 @@
             text-align: center; border-radius: 15px; cursor: pointer; 
             transition: 0.3s; background: rgba(0,0,0,0.3); 
         }
-        .method img { width: 45px; height: 45px; margin-bottom: 8px; border-radius: 8px; object-fit: cover; }
+        .method img { width: 45px; height: 45px; margin-bottom: 8px; border-radius: 8px; }
         .method.active { border-color: #1dcc70; background: rgba(29, 204, 112, 0.15); box-shadow: 0 0 15px rgba(29, 204, 112, 0.2); }
         
         .admin-box { 
@@ -48,14 +48,14 @@
             border-radius: 12px; margin-bottom: 20px; text-align: center; 
             border: 1px dashed #1dcc70; 
         }
-        .admin-box h3 { margin: 5px 0; color: #1dcc70; font-size: 24px; letter-spacing: 2px; font-family: 'Orbitron'; }
+        .admin-box h3 { margin: 5px 0; color: #1dcc70; font-size: 24px; letter-spacing: 2px; }
         
         label { display: block; margin-bottom: 8px; color: #1dcc70; font-size: 13px; font-weight: 500; }
         input { 
             width: 100%; padding: 14px; margin-bottom: 18px; 
             border: 1px solid #333; background: rgba(0,0,0,0.5); 
             color: white; border-radius: 10px; box-sizing: border-box; 
-            outline: none; transition: 0.3s; font-size: 16px;
+            outline: none; transition: 0.3s;
         }
         input:focus { border-color: #1dcc70; box-shadow: 0 0 8px rgba(29, 204, 112, 0.3); }
         
@@ -64,7 +64,6 @@
             color: white; border: none; padding: 16px; border-radius: 10px; 
             font-weight: bold; font-size: 16px; cursor: pointer; 
             transition: 0.3s; box-shadow: 0 5px 15px rgba(29, 204, 112, 0.3);
-            font-family: 'Poppins';
         }
         .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(29, 204, 112, 0.4); }
         .btn-submit:active { transform: scale(0.98); }
@@ -75,7 +74,8 @@
 <body>
 
     <div style="max-width: 400px; width: 100%;">
-        <a href="index.html" class="back-btn">← Back to Game</a>
+        <a href="index.html" class="back-btn">← Back to Dashboard</a>
+        
         <div class="card">
             <h2>Deposit Fund</h2>
             
@@ -84,7 +84,7 @@
                     <img src="https://logowik.com/content/uploads/images/bkash-logo-vector.jpg" alt="Bkash">
                     <br>Bkash
                 </div>
-                <div id="btn-nagad" class="method" onclick="selectMethod('Nagad', '01336487132')">
+                <div id="btn-nagad" class="method" onclick="selectMethod('Nagad', '01949243011')">
                     <img src="https://logowik.com/content/uploads/images/nagad-logo-vector.jpg" alt="Nagad">
                     <br>Nagad
                 </div>
@@ -144,7 +144,8 @@
         };
 
         async function submitDeposit() {
-            const amount = parseFloat(document.getElementById('dep-amount').value);
+            const amountValue = document.getElementById('dep-amount').value;
+            const amount = parseFloat(amountValue);
             const trx = document.getElementById('trx-id').value.trim();
             const btn = document.getElementById('submit-btn');
 
@@ -169,7 +170,7 @@
                     timestamp: new Date().toLocaleString()
                 });
 
-                alert("রিকোয়েস্ট সফল হয়েছে!");
+                alert("ডিপোজিট রিকোয়েস্ট সফল হয়েছে! অ্যাডমিন চেক করে ব্যালেন্স যোগ করে দিবে।");
                 window.location.href = "index.html";
             } catch (error) {
                 alert("Error: " + error.message);
@@ -181,13 +182,3 @@
     </script>
 </body>
 </html>
-<script>
-  atOptions = {
-    'key' : 'c403443c624d3a0e64d71e89cd90306b',
-    'format' : 'iframe',
-    'height' : 50,
-    'width' : 320,
-    'params' : {}
-  };
-</script>
-<script src="https://www.highperformanceformat.com/c403443c624d3a0e64d71e89cd90306b/invoke.js"></script>
